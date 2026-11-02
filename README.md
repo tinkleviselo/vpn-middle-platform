@@ -108,6 +108,17 @@ CI（`.github/workflows/ci.yml`）会在每次 push 时跑前三个检查。
 #   dist-out/vpn.zip       节点包(脚本 + 测试 + QUICKSTART)
 #   dist-out/central.zip   中台包(内含 dist/vpn.zip, 上传即可用)
 ```
+## 发布
+
+打 tag 即自动发布（CI 先跑静态检查，通过后构建 `vpn.zip` / `central.zip` 并挂到 Release）：
+
+```bash
+git tag -a v1.0.0 -m "vpnx v1.0.0"
+git push origin v1.0.0
+```
+
+也可以在 GitHub 的 **Actions → release → Run workflow** 手动触发（填版本号）。
+发布流程见 [`.github/workflows/release.yml`](.github/workflows/release.yml)。
 ## 安全模型
 
 - 节点 → 中台接口使用 **HMAC-SHA256 签名**（方法/路径/时间戳/nonce/正文），带时间窗与 nonce 防重放

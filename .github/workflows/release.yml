@@ -1,0 +1,102 @@
+name: release
+
+# 打 tag 即自动发布:  git tag -a v1.0.0 -m "vpnx v1.0.0" && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号(如 v1.0.0); 手动触发时作为 Release 标题"
+        required: true
+        default: "v0.0.0-manual"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 静态检查(不通过就不发布)
+        run: |
+          python3 tests/lint_shell.py .
+          python3 tests/lint_php.py .
+          python3 tests/render_check.py
+
+      # 把 build 号打成本次 tag, 这样节点端能区分不同发布(中台推送升级靠它比对)
+      - name: 标记构建号
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          ver="${TAG#v}"
+          sed -i "s/^VPNX_BUILD=.*/VPNX_BUILD=\"${ver}\"/" vpnx.sh
+          grep -n '^VPNX_BUILD=' vpnx.sh
+
+      - name: 构建发布包
+        run: bash scripts/build-dist.sh
+
+      - name: 生成校验和
+        run: |
+          cd dist-out
+          sha256sum vpn.zip central.zip > SHA256SUMS
+          echo "---- SHA256SUMS ----"; cat SHA256SUMS
+
+      - name: 生成 Release 说明
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          {
+            echo "## vpnx ${TAG}"
+            echo ""
+            echo "构建时间: $(date -u '+%Y-%m-%d %H:%M UTC') · 提交: \`${GITHUB_SHA:0:7}\`"
+            echo ""
+            echo "### 附件"
+            echo "| 文件 | 用途 |"
+            echo "| --- | --- |"
+            echo "| \`vpn.zip\` | 节点包(脚本 + 测试 + QUICKSTART), 中台分发与节点自升级用 |"
+            echo "| \`central.zip\` | 中台包(内含 \`dist/vpn.zip\`), 解压到站点目录即可 |"
+            echo "| \`SHA256SUMS\` | 两个包的 sha256 校验和 |"
+            echo ""
+            echo "### 中台部署"
+            echo '```bash'
+            echo 'unzip -oq central.zip -d <站点目录>    # 覆盖上传后访问 <站点>/api.php?__vpnx=/admin/health 应返回 {"ok":true}'
+            echo '```'
+            echo ""
+            echo "### 节点安装(由中台分发安装包)"
+            echo '```bash'
+            echo 'curl -fsSL "https://<你的中台>/dist.php?f=vpn.zip" -o /tmp/vpn.zip \'
+            echo '  && rm -rf /tmp/vpnnew && mkdir -p /tmp/vpnnew && unzip -oq /tmp/vpn.zip -d /tmp/vpnnew \'
+            echo '  && cd /tmp/vpnnew && bash vpnx.sh install --profiles reality,ss2022,vmess-ws,xhttp \'
+            echo '       --central-url https://<你的中台>/api.php --node-id <节点ID> --token <令牌>'
+            echo '```'
+            echo ""
+            echo "### 节点升级"
+            echo "已接入中台的节点: 在中台「节点安装」页点「推送升级」即可(60 秒内自动完成, 不断线)。"
+            echo ""
+            echo "许可证: MIT"
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: 发布(已存在则覆盖附件)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist-out/vpn.zip dist-out/central.zip dist-out/SHA256SUMS --clobber
+            gh release edit "$TAG" --notes-file release-notes.md
+            echo "已更新既有 Release: $TAG"
+          else
+            gh release create "$TAG" \
+              dist-out/vpn.zip dist-out/central.zip dist-out/SHA256SUMS \
+              --title "vpnx $TAG" --notes-file release-notes.md --latest
+            echo "已创建 Release: $TAG"
+          fi
