@@ -1,0 +1,63 @@
+# =============================================================================
+#  vpnx 中台(PHP) - Nginx / 建站面板 站点配置参考
+# -----------------------------------------------------------------------------
+#  两种部署方式, 都能用, 区别只是 URL 好不好看:
+#
+#  方式 A(零 rewrite, 推荐先用这个)
+#    站点根指向 central/ 目录, 直连 index.php 与 api.php;
+#    中台 base_url 留空(自动推导成 https://面板域名/vpnx/api.php)
+#    节点请求走"查询参数模式": https://面板域名/vpnx/api.php?__vpnx=/api/v1/node/heartbeat
+#    —— 不需要任何 rewrite, 也不怕面板/虚拟主机拦截 ".php" 后面的附加路径(这是常见的 403 原因)。
+#    这种模式下订阅地址形如: https://面板域名/vpnx/api.php?__vpnx=/sub/<token>
+#
+#  方式 B(需要下面这段 rewrite, URL 干净)
+#    中台 base_url 填 https://面板域名/vpnx
+#      节点请求: https://面板域名/vpnx/api/v1/node/heartbeat
+#      订阅地址: https://面板域名/vpnx/sub/<token>
+#
+#  注意: 无论哪种方式, 中台 api.php 都会自动从 __vpnx / PATH_INFO / REQUEST_URI / SCRIPT_NAME
+#        里推断出"应用相对路径"用于路由与节点签名校验, 不需要你手工拼 PATH_INFO。
+# =============================================================================
+
+# ---------------------------------------------------------------- 方式 B rewrite
+# 把 /vpnx/api/v1/... 与 /vpnx/sub/... 都交给 api.php 处理。
+# PHP-FPM socket 路径按 面板实际版本改(面板一般在 /tmp/php-cgi-<版本>.sock 或
+# /usr/local/php-<版本>/var/run/php-fpm.sock)。
+location ~ ^/vpnx/(api/v1|sub)(/.*)?$ {
+    root  /home/wwwroot/vpnx-central;
+    fastcgi_pass  unix:/tmp/php-cgi-74.sock;
+    include       fastcgi.conf;
+    # 关键: 实际执行的是 api.php, 而 REQUEST_URI 保留原始请求路径
+    fastcgi_param SCRIPT_FILENAME /home/wwwroot/vpnx-central/api.php;
+    fastcgi_param SCRIPT_NAME     /vpnx/api.php;
+}
+
+# 其余请求走正常 PHP 处理(index.php / api.php 直接被访问)
+location /vpnx/ {
+    root      /home/wwwroot/vpnx-central;
+    index     index.php;
+    try_files $uri $uri/ /vpnx/index.php$is_args$args;
+
+    location ~ \.php$ {
+        fastcgi_pass  unix:/tmp/php-cgi-74.sock;
+        include       fastcgi.conf;
+        fastcgi_param SCRIPT_FILENAME $request_filename;
+    }
+}
+
+# 安全: 禁止直接下载数据目录与库文件
+location ~ ^/vpnx/(data|lib)/ {
+    deny all;
+    return 404;
+}
+
+# =============================================================================
+#  其它注意事项
+# -----------------------------------------------------------------------------
+#  1. 站点根必须是 central/ 目录本身(或它的软链), 不要把 data/ 暴露到 web 根之外
+#     后再用 alias 反向包含, 容易配错权限。
+#  2. 建议开启 HTTPS。中台 -> 节点的订阅地址若走 http, 客户端更容易被中间人看到。
+#  3. 管理接口的 Bearer token 走 Authorization 头; 某些 Apache/CGI 会丢掉该头,
+#     所以 api.php 也接受 X-Admin-Token(推荐脚本调用时统一用 X-Admin-Token)。
+#  4. 如果需要按 IP 白名单限制后台, 在 server 段里加 allow/deny 即可。
+#  5. 建站面板本身占用的端口(8888/80/443 等)与本中台无关, 中台只是面板上的一个站点。

@@ -1,0 +1,84 @@
+{
+  "_note": "示例策略：centralctl.py policy new --id n1 --from policy.example.json 使用。revision 留空时由中台自增。",
+  "node": {
+    "reality_target": "www.bing.com:443",
+    "reality_server_names": ["www.bing.com"],
+    "ports": {
+      "vless-reality": 8443,
+      "ss2022": 8444,
+      "vmess-ws": 8080
+    },
+    "inbounds": [
+      {
+        "tag": "vless-reality",
+        "protocol": "vless",
+        "port": 8443,
+        "network": "tcp",
+        "enabled": true,
+        "profile": "std"
+      },
+      {
+        "tag": "ss2022",
+        "protocol": "ss2022",
+        "port": 8444,
+        "network": "tcp",
+        "enabled": true,
+        "profile": "ss"
+      }
+    ],
+    "log_level": "warning",
+    "bbr": true,
+    "allow_protocols": ["vless-reality", "ss2022", "vmess-ws"]
+  },
+  "users": [
+    {
+      "action": "upsert",
+      "name": "alice",
+      "email": "alice@example.com",
+      "uuid": "",
+      "ss_password": null,
+      "expire_at": 1767225600,
+      "quota_bytes": 107374182400,
+      "enabled": true,
+      "speed_mbps": 0,
+      "max_devices": 3,
+      "protocols": ["vless-reality", "ss2022"],
+      "sub_token": "alice0123456789abcdef0123456789ab"
+    },
+    {
+      "action": "upsert",
+      "name": "bob",
+      "email": "bob@example.com",
+      "uuid": "",
+      "ss_password": null,
+      "expire_at": 0,
+      "quota_bytes": 0,
+      "enabled": false,
+      "speed_mbps": 100,
+      "max_devices": 1,
+      "protocols": ["vless-reality"],
+      "sub_token": "bob0123456789abcdef0123456789abcd"
+    }
+  ],
+  "profiles": {
+    "std": {
+      "type": "vless-reality",
+      "params": {
+        "flow": "xtls-rprx-vision",
+        "fingerprint": "chrome",
+        "spider_x": "/"
+      }
+    },
+    "ss": {
+      "type": "ss2022",
+      "params": {
+        "method": "2022-blake3-aes-128-gcm"
+      }
+    }
+  },
+  "maintenance": {
+    "window": "03:00-04:00",
+    "auto_update": true,
+    "max_xray_version": ""
+  }
+}

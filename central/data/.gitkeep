@@ -1,0 +1,15 @@
+# vpnx 中台运行时数据目录
+#
+# 这里的所有 JSON 都是运行时状态, 不要纳入版本管理(建议在 data/ 下自行添加 .gitignore):
+#   config.json            配置(管理员口令哈希 / 管理令牌 / 档位 / 节点默认参数)
+#   nodes.json             节点注册表 + 运行时状态(含节点密钥)
+#   users.json             账号表(中台是账号的唯一事实来源)
+#   subs.json              各节点上报的订阅内容
+#   nonces.json            节点请求 nonce 去重窗口
+#   policy_state/<id>.json 每个节点的策略修订号 / 指纹 / 待删除墓碑 / ack
+#   usage/<id>.json        每个节点的用量
+#   events/<id>.jsonl      节点事件
+#   audit.jsonl            管理操作审计
+#   install-info.txt       首次初始化生成的初始口令(登录后请删除)
+#
+# 建议权限: 目录 0700, 文件 0600 (脚本会自动设置)

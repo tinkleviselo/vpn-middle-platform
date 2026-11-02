@@ -1,0 +1,20 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Shell 静态检查
+        run: python3 tests/lint_shell.py .
+      - name: PHP 静态检查
+        run: python3 tests/lint_php.py .
+      - name: 配置渲染结构校验
+        run: python3 tests/render_check.py

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "_note": "示例数据：仅用于说明 nodes.json 结构。secret 由中台自动生成（secrets.token_hex(32)），请不要提交真实密钥。",
+  "nodes": {
+    "n1": {
+      "node_id": "n1",
+      "name": "HK-1",
+      "ip": "1.2.3.4",
+      "remark": "香港 CN2 节点",
+      "secret": "REPLACE_WITH_GENERATED_NODE_SECRET",
+      "created_at": 1700000000,
+      "last_heartbeat": 1700000100,
+      "applied_policy_revision": 1,
+      "last_ack_result": "applied",
+      "last_error": "",
+      "online": true,
+      "hostname": "hk1.example.com",
+      "public_ip": "1.2.3.4",
+      "agent_version": "1.0.0",
+      "xray_version": "1.8.24",
+      "os": "Ubuntu 22.04.4 LTS",
+      "kernel": "5.15.0-105-generic",
+      "arch": "amd64",
+      "uptime_sec": 864000,
+      "load1": 0.15,
+      "mem_used_pct": 32.5,
+      "disk_used_pct": 41.0,
+      "traffic_total_bytes": 123456789,
+      "users_total": 12,
+      "users_active": 5,
+      "inbounds": [
+        {
+          "tag": "vless-reality",
+          "protocol": "vless",
+          "port": 8443,
+          "network": "tcp",
+          "enabled": true
+        },
+        {
+          "tag": "ss2022",
+          "protocol": "shadowsocks",
+          "port": 8444,
+          "network": "tcp",
+          "enabled": true
+        }
+      ],
+      "health": {
+        "service_ok": true,
+        "config_ok": true,
+        "ports_ok": true,
+        "last_error": ""
+      }
+    }
+  }
+}
